@@ -1,0 +1,18 @@
+CONFIG_IDF_TARGET="esp32s3"
+
+# The native USB-OTG port is the emulated camera, so the console + flashing must
+# use UART0 (COM3). USB-Serial-JTAG would fight the TinyUSB device on the PHY.
+CONFIG_ESP_CONSOLE_UART_DEFAULT=y
+CONFIG_ESP_CONSOLE_SECONDARY_NONE=y
+CONFIG_ESP_CONSOLE_UART_BAUDRATE=115200
+
+# Partition table (single app; adjust flash size to your board).
+CONFIG_PARTITION_TABLE_CUSTOM=y
+CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="partitions.csv"
+CONFIG_ESPTOOLPY_FLASHSIZE_4MB=y
+
+# TinyUSB device stack (esp_tinyusb). No stock class is enabled — Falcon supplies
+# its own descriptors (tud_descriptor_*_cb) and a custom class driver
+# (usbd_app_driver_get_cb). EP0 size is pinned to 8 in tusb_config.h to match the
+# real camera's device descriptor.
+CONFIG_TINYUSB_DEBUG_LEVEL=1

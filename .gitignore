@@ -1,0 +1,12 @@
+# ESP-IDF build artifacts
+build/
+sdkconfig
+sdkconfig.old
+managed_components/
+
+# Python
+__pycache__/
+*.pyc
+
+# Editor / IDE
+.vscode/

@@ -1,0 +1,18 @@
+menu "Falcon camera emulator"
+
+choice FALCON_USB_ID
+    prompt "Emulated USB identity"
+    default FALCON_USB_ID_XBOX
+    help
+        Which device the ESP32 presents to the host. The Xbox identity is what the
+        original Xbox Video Chat app expects; the EyeToy identity is matched by the
+        Linux gspca_ov519 driver, so use it to preview the checkerboard on a PC.
+
+    config FALCON_USB_ID_XBOX
+        bool "Xbox Video Camera (045E:028C)"
+
+    config FALCON_USB_ID_EYETOY
+        bool "Sony EyeToy (054C:0155) - Linux gspca_ov519 testable"
+endchoice
+
+endmenu
