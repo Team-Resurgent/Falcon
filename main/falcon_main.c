@@ -8,6 +8,7 @@
 #include "freertos/task.h"
 #include "tinyusb.h"
 #include "sdkconfig.h"
+#include "falcon_desc.h"
 #if defined(CONFIG_FALCON_MODE_UVC)
 #include "uvc_defs.h"
 #endif
@@ -21,14 +22,18 @@ void app_main(void) {
     ESP_LOGI(TAG, "Falcon: Xbox Video Camera (OV519/OV530) emulator starting");
 #endif
 
-    // Descriptors come from our tud_descriptor_*_cb (usb_descriptors.c); the
-    // custom OV519 class driver is registered via usbd_app_driver_get_cb
-    // (falcon_class.c). Pass NULLs so esp_tinyusb uses the weak callbacks.
+    // esp_tinyusb builds its tud_descriptor_*_cb from the pointers we pass here
+    // (passing NULL makes it use ITS OWN default descriptors, not our callbacks).
+    // The OV519 mode additionally registers a custom class driver via
+    // usbd_app_driver_get_cb (falcon_class.c).
+    const tusb_desc_device_t *dev; const uint8_t *cfg; const char **strs; int nstr;
+    falcon_get_descriptors(&dev, &cfg, &strs, &nstr);
     const tinyusb_config_t tusb_cfg = {
-        .device_descriptor        = NULL,
-        .string_descriptor        = NULL,
+        .device_descriptor        = dev,
+        .string_descriptor        = strs,
+        .string_descriptor_count  = nstr,
+        .configuration_descriptor = cfg,
         .external_phy             = false,
-        .configuration_descriptor = NULL,
     };
     ESP_ERROR_CHECK(tinyusb_driver_install(&tusb_cfg));
 

@@ -53,30 +53,15 @@ static const char *const s_strings[] = {
     "Xbox Video Camera",            // 2: iProduct
 };
 
-// TinyUSB descriptor callbacks -------------------------------------------------
-const uint8_t *tud_descriptor_device_cb(void) { return s_device_desc; }
-
-const uint8_t *tud_descriptor_configuration_cb(uint8_t index) {
-    (void)index;
-    return s_config_desc;
-}
-
-const uint16_t *tud_descriptor_string_cb(uint8_t index, uint16_t langid) {
-    (void)langid;
-    static uint16_t buf[32];
-    uint8_t len;
-    if (index == 0) {
-        buf[1] = 0x0409;
-        len = 1;
-    } else {
-        if (index >= sizeof(s_strings) / sizeof(s_strings[0])) return NULL;
-        const char *s = s_strings[index];
-        len = (uint8_t)strlen(s);
-        if (len > 31) len = 31;
-        for (uint8_t i = 0; i < len; i++) buf[1 + i] = s[i];
-    }
-    buf[0] = (uint16_t)((TUSB_DESC_STRING << 8) | (2 * len + 2));
-    return buf;
+// esp_tinyusb builds tud_descriptor_*_cb from these (passed to
+// tinyusb_driver_install); it ignores any app-provided tud_descriptor_*_cb.
+#include "falcon_desc.h"
+void falcon_get_descriptors(const tusb_desc_device_t **dev, const uint8_t **cfg,
+                            const char ***strs, int *nstr) {
+    *dev  = (const tusb_desc_device_t *)s_device_desc;   // same 18-byte layout
+    *cfg  = s_config_desc;
+    *strs = (const char **)s_strings;
+    *nstr = (int)(sizeof(s_strings) / sizeof(s_strings[0]));
 }
 
 const void *falcon_ep_desc_for_alt(uint8_t alt, uint8_t out[7]) {

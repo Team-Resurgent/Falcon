@@ -12,10 +12,10 @@
 #include "uvc_defs.h"
 
 #define UVC_VID  0x1209   // pid.codes (generic/community)
-#define UVC_PID  0xF01C   // "Falcon" dev UVC
+#define UVC_PID  0xF01F   // "Falcon" dev UVC (iso, serial)
 #define UVC_BCD  0x0200
 
-enum { STRID_LANGID = 0, STRID_MANUFACTURER, STRID_PRODUCT, STRID_UVC_CONTROL, STRID_UVC_STREAMING };
+enum { STRID_LANGID = 0, STRID_MANUFACTURER, STRID_PRODUCT, STRID_SERIAL, STRID_UVC_CONTROL, STRID_UVC_STREAMING };
 enum { ITF_NUM_VIDEO_CONTROL = 0, ITF_NUM_VIDEO_STREAMING, ITF_NUM_TOTAL };
 
 #define UVC_CLOCK_FREQUENCY            27000000
@@ -30,12 +30,10 @@ static const tusb_desc_device_t s_desc_device = {
     .bDeviceClass = TUSB_CLASS_MISC, .bDeviceSubClass = MISC_SUBCLASS_COMMON,
     .bDeviceProtocol = MISC_PROTOCOL_IAD,
     .bMaxPacketSize0 = CFG_TUD_ENDPOINT0_SIZE,
-    .idVendor = UVC_VID, .idProduct = UVC_PID, .bcdDevice = 0x0100,
-    .iManufacturer = STRID_MANUFACTURER, .iProduct = STRID_PRODUCT, .iSerialNumber = 0,
+    .idVendor = UVC_VID, .idProduct = UVC_PID, .bcdDevice = 0x0101,
+    .iManufacturer = STRID_MANUFACTURER, .iProduct = STRID_PRODUCT, .iSerialNumber = STRID_SERIAL,
     .bNumConfigurations = 1,
 };
-
-const uint8_t *tud_descriptor_device_cb(void) { return (const uint8_t *)&s_desc_device; }
 
 // ---- Configuration descriptor (MJPEG, bulk streaming) --------------------
 typedef struct TU_ATTR_PACKED {
@@ -46,12 +44,13 @@ typedef struct TU_ATTR_PACKED {
 } uvc_control_desc_t;
 
 typedef struct TU_ATTR_PACKED {
-    tusb_desc_interface_t itf;
+    tusb_desc_interface_t itf;       // alt 0: zero-bandwidth (no endpoint)
     tusb_desc_video_streaming_input_header_1byte_t header;
     tusb_desc_video_format_mjpeg_t format;
     tusb_desc_video_frame_mjpeg_continuous_t frame;
     tusb_desc_video_streaming_color_matching_t color;
-    tusb_desc_endpoint_t ep;   // bulk IN (no iso alt-setting needed)
+    tusb_desc_interface_t itf_alt;   // alt 1: the streaming iso endpoint
+    tusb_desc_endpoint_t ep;         // iso IN (Windows usbvideo.sys wants iso, not bulk)
 } uvc_streaming_desc_t;
 
 typedef struct TU_ATTR_PACKED {
@@ -104,14 +103,14 @@ static const uvc_cfg_desc_t s_desc_cfg = {
     .vs = {
         .itf = {
             .bLength = sizeof(tusb_desc_interface_t), .bDescriptorType = TUSB_DESC_INTERFACE,
-            .bInterfaceNumber = ITF_NUM_VIDEO_STREAMING, .bAlternateSetting = 0, .bNumEndpoints = 1, // bulk
+            .bInterfaceNumber = ITF_NUM_VIDEO_STREAMING, .bAlternateSetting = 0, .bNumEndpoints = 0, // idle
             .bInterfaceClass = TUSB_CLASS_VIDEO, .bInterfaceSubClass = VIDEO_SUBCLASS_STREAMING,
             .bInterfaceProtocol = VIDEO_ITF_PROTOCOL_15, .iInterface = STRID_UVC_STREAMING,
         },
         .header = {
             .bLength = sizeof(tusb_desc_video_streaming_input_header_1byte_t), .bDescriptorType = TUSB_DESC_CS_INTERFACE,
             .bDescriptorSubType = VIDEO_CS_ITF_VS_INPUT_HEADER, .bNumFormats = 1,
-            .wTotalLength = sizeof(uvc_streaming_desc_t) - sizeof(tusb_desc_interface_t) - sizeof(tusb_desc_endpoint_t),
+            .wTotalLength = sizeof(uvc_streaming_desc_t) - 2 * sizeof(tusb_desc_interface_t) - sizeof(tusb_desc_endpoint_t),
             .bEndpointAddress = EPNUM_VIDEO_IN, .bmInfo = 0, .bTerminalLink = UVC_ENTITY_CAP_OUTPUT_TERMINAL,
             .bStillCaptureMethod = 0, .bTriggerSupport = 0, .bTriggerUsage = 0, .bControlSize = 1, .bmaControls = { 0 },
         },
@@ -136,41 +135,38 @@ static const uvc_cfg_desc_t s_desc_cfg = {
             .bDescriptorSubType = VIDEO_CS_ITF_VS_COLORFORMAT, .bColorPrimaries = VIDEO_COLOR_PRIMARIES_BT709,
             .bTransferCharacteristics = VIDEO_COLOR_XFER_CH_BT709, .bMatrixCoefficients = VIDEO_COLOR_COEF_SMPTE170M,
         },
+        .itf_alt = {
+            .bLength = sizeof(tusb_desc_interface_t), .bDescriptorType = TUSB_DESC_INTERFACE,
+            .bInterfaceNumber = ITF_NUM_VIDEO_STREAMING, .bAlternateSetting = 1, .bNumEndpoints = 1,
+            .bInterfaceClass = TUSB_CLASS_VIDEO, .bInterfaceSubClass = VIDEO_SUBCLASS_STREAMING,
+            .bInterfaceProtocol = VIDEO_ITF_PROTOCOL_15, .iInterface = STRID_UVC_STREAMING,
+        },
         .ep = {
             .bLength = sizeof(tusb_desc_endpoint_t), .bDescriptorType = TUSB_DESC_ENDPOINT,
             .bEndpointAddress = EPNUM_VIDEO_IN,
-            .bmAttributes = { .xfer = TUSB_XFER_BULK, .sync = 0 },
-            .wMaxPacketSize = 64, .bInterval = 1,
+            .bmAttributes = { .xfer = TUSB_XFER_ISOCHRONOUS, .sync = 1 /* async */ },
+            .wMaxPacketSize = 512, .bInterval = 1,
         },
     },
 };
-
-const uint8_t *tud_descriptor_configuration_cb(uint8_t index) {
-    (void)index;
-    return (const uint8_t *)&s_desc_cfg;
-}
 
 // ---- Strings -------------------------------------------------------------
 static const char *const s_strings[] = {
     (const char[]){ 0x09, 0x04 },
     "Team Resurgent",
     "Falcon Camera (dev UVC)",
+    "FALCON0001",
     "Falcon Control",
     "Falcon Streaming",
 };
 
-const uint16_t *tud_descriptor_string_cb(uint8_t index, uint16_t langid) {
-    (void)langid;
-    static uint16_t buf[32];
-    uint8_t len;
-    if (index == 0) { buf[1] = 0x0409; len = 1; }
-    else {
-        if (index >= sizeof(s_strings) / sizeof(s_strings[0])) return NULL;
-        const char *s = s_strings[index];
-        len = (uint8_t)strlen(s);
-        if (len > 31) len = 31;
-        for (uint8_t i = 0; i < len; i++) buf[1 + i] = s[i];
-    }
-    buf[0] = (uint16_t)((TUSB_DESC_STRING << 8) | (2 * len + 2));
-    return buf;
+// esp_tinyusb builds tud_descriptor_*_cb from these (passed to
+// tinyusb_driver_install); it ignores any app-provided tud_descriptor_*_cb.
+#include "falcon_desc.h"
+void falcon_get_descriptors(const tusb_desc_device_t **dev, const uint8_t **cfg,
+                            const char ***strs, int *nstr) {
+    *dev  = &s_desc_device;
+    *cfg  = (const uint8_t *)&s_desc_cfg;
+    *strs = (const char **)s_strings;
+    *nstr = (int)(sizeof(s_strings) / sizeof(s_strings[0]));
 }

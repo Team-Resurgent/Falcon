@@ -28,8 +28,8 @@ extern "C" {
 #define CFG_TUD_ENDPOINT0_SIZE  64
 #define CFG_TUD_VIDEO           1
 #define CFG_TUD_VIDEO_STREAMING 1
-#define CFG_TUD_VIDEO_STREAMING_BULK        1     // bulk = no iso FIFO tuning, robust on Windows
-#define CFG_TUD_VIDEO_STREAMING_EP_BUFSIZE  256
+#define CFG_TUD_VIDEO_STREAMING_BULK        0     // iso: Windows usbvideo.sys requires it (bulk -> FAILED_START)
+#define CFG_TUD_VIDEO_STREAMING_EP_BUFSIZE  512
 #define CFG_TUD_VIDEO_STREAMING_IF_COUNT    1
 #define CFG_TUD_VIDEO_CONTROL_IF_COUNT      1
 #define CFG_TUD_CDC     0
