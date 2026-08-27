@@ -9,6 +9,13 @@ sees a real camera. No app patching.
 so you can *see* video end to end. Audio (the separate Xbox Communicator, a.k.a.
 "Hawk") and the Xbox-side capture sample are future work.
 
+### Two build modes (`menuconfig` → *Falcon camera emulator* → *Camera mode*)
+- **Faithful Xbox Video Camera (OV519/OV530)** — default. The real vendor device;
+  what the Xbox Video Chat app (and Linux `gspca_ov519`) expects.
+- **UVC dev camera** — a standard UVC MJPEG camera so a **PC previews the stream
+  with no driver** (Windows Camera app / OBS / `ffplay`). Use it to bring up and
+  verify the ESP32 streaming pipeline before involving the Xbox.
+
 ## How it works
 
 The Xbox Video Camera is a **vendor-specific** USB device (interface class `0xFF`,
@@ -53,13 +60,21 @@ python tools/gen_checkerboard_jpegs.py --out main/checkerboard_jpegs.h
 
 ## Verify (PC, no Xbox)
 
-Build with the **EyeToy** identity, plug the **native USB** port into a Linux box:
+**Easiest — UVC dev mode on any PC (incl. Windows):** set *Camera mode* →
+*UVC dev camera*, flash, plug the **native USB** port into a PC. It appears as a
+standard camera — open the **Windows Camera app**, OBS, or `ffplay` and watch the
+scrolling checkerboard. No drivers.
 
+**Faithful OV519 mode → Linux only:** set the identity to **EyeToy**, plug into a
+Linux box:
 ```bash
-dmesg | tail            # expect gspca_ov519 binding
+dmesg | tail             # expect gspca_ov519 binding
 v4l2-ctl --list-devices  # the camera appears
-ffplay /dev/video0       # or guvcview / Cheese — see the scrolling checkerboard
+ffplay /dev/video0       # or guvcview / Cheese
 ```
+(On Windows the faithful mode has no in-box driver; inspect it instead with
+USB Device Tree Viewer for the descriptors, or Wireshark+USBPcap to watch the
+OV519 control traffic and carve out a JPEG.)
 
 Success = a stock viewer shows the live 320×240 checkerboard.
 
@@ -68,7 +83,12 @@ Success = a stock viewer shows the live 320×240 checkerboard.
 - The MJPEG frame generator is validated (decodes as baseline 320×240).
 - The USB descriptors, OV519 control emulation, and MJPEG framing follow the
   hardware-verified research spec.
-- **First-flash validation items** (need real hardware): esp_tinyusb picking up
-  the custom `tusb_config.h` (EP0 size 8) and the custom class driver; iso IN
-  FIFO sizing on the S3; and OV519 SOF/EOF packet alignment against `gspca`.
-  Iterate from the COM3 log + `dmesg`.
+- **First-flash validation items** (need real hardware):
+  - Both modes: esp_tinyusb must honor the project `tusb_config.h`. If the UVC
+    `tud_video_*` symbols (or the OV519 custom-class hooks) don't link, enable the
+    matching class in the esp_tinyusb component's menuconfig, or add the TinyUSB
+    class source to the build.
+  - OV519 mode: EP0 size 8, iso IN FIFO sizing on the S3, OV519 SOF/EOF packet
+    alignment vs `gspca`.
+  - UVC mode: MJPEG-over-bulk frame pacing; confirm the Windows Camera app opens it.
+  Iterate from the COM3 log + host side (`dmesg` / Device Manager).

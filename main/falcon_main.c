@@ -7,11 +7,19 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "tinyusb.h"
+#include "sdkconfig.h"
+#if defined(CONFIG_FALCON_MODE_UVC)
+#include "uvc_defs.h"
+#endif
 
 static const char *TAG = "falcon";
 
 void app_main(void) {
+#if defined(CONFIG_FALCON_MODE_UVC)
+    ESP_LOGI(TAG, "Falcon: UVC dev camera starting");
+#else
     ESP_LOGI(TAG, "Falcon: Xbox Video Camera (OV519/OV530) emulator starting");
+#endif
 
     // Descriptors come from our tud_descriptor_*_cb (usb_descriptors.c); the
     // custom OV519 class driver is registered via usbd_app_driver_get_cb
@@ -23,7 +31,13 @@ void app_main(void) {
         .configuration_descriptor = NULL,
     };
     ESP_ERROR_CHECK(tinyusb_driver_install(&tusb_cfg));
+
+#if defined(CONFIG_FALCON_MODE_UVC)
+    falcon_uvc_start();   // spawn the MJPEG frame feeder
+    ESP_LOGI(TAG, "USB UVC device installed — open it in any camera app");
+#else
     ESP_LOGI(TAG, "USB device installed — streaming starts on SET_INTERFACE(alt>=1)");
+#endif
 
     for (;;) {
         vTaskDelay(pdMS_TO_TICKS(5000));

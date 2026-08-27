@@ -1,6 +1,9 @@
-// Falcon — TinyUSB config. Vendor OV519/OV530 device via a custom application
-// class driver (usbd_app_driver_get_cb); no built-in TinyUSB classes are used.
+// Falcon — TinyUSB config. Two build modes (menuconfig -> Falcon camera emulator):
+//   * OV519 (default): faithful Xbox Video Camera via a custom application class
+//     driver (falcon_class.c); no built-in TinyUSB classes.
+//   * UVC dev: a standard UVC MJPEG camera (video class) for PC preview.
 #pragma once
+#include "sdkconfig.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -20,10 +23,26 @@ extern "C" {
 #define CFG_TUSB_MEM_ALIGN    __attribute__((aligned(4)))
 #endif
 
+#if defined(CONFIG_FALCON_MODE_UVC)
+// -------- UVC dev mode: standard MJPEG-over-bulk video camera --------------
+#define CFG_TUD_ENDPOINT0_SIZE  64
+#define CFG_TUD_VIDEO           1
+#define CFG_TUD_VIDEO_STREAMING 1
+#define CFG_TUD_VIDEO_STREAMING_BULK        1     // bulk = no iso FIFO tuning, robust on Windows
+#define CFG_TUD_VIDEO_STREAMING_EP_BUFSIZE  256
+#define CFG_TUD_VIDEO_STREAMING_IF_COUNT    1
+#define CFG_TUD_VIDEO_CONTROL_IF_COUNT      1
+#define CFG_TUD_CDC     0
+#define CFG_TUD_MSC     0
+#define CFG_TUD_HID     0
+#define CFG_TUD_MIDI    0
+#define CFG_TUD_AUDIO   0
+#define CFG_TUD_VENDOR  0
+
+#else
+// -------- OV519 mode (default): faithful Xbox Video Camera ------------------
 // EP0 max packet = 8, byte-faithful to the real camera's device descriptor.
 #define CFG_TUD_ENDPOINT0_SIZE  8
-
-// No stock classes — Falcon is a fully custom vendor device (see falcon_class.c).
 #define CFG_TUD_CDC     0
 #define CFG_TUD_MSC     0
 #define CFG_TUD_HID     0
@@ -31,6 +50,7 @@ extern "C" {
 #define CFG_TUD_VIDEO   0
 #define CFG_TUD_AUDIO   0
 #define CFG_TUD_VENDOR  0   // we implement tud_vendor_control_xfer_cb ourselves (OV519 regs)
+#endif
 
 #ifdef __cplusplus
 }
