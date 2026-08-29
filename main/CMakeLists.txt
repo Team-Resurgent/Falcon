@@ -14,36 +14,25 @@ if(NOT _falcon_patch_rc EQUAL 0)
     message(WARNING "Falcon: dwc2 EP0 patch NOT applied (DMA mode will crash on the Xbox). See patches/README.md")
 endif()
 
-# Compile the descriptors/streaming for the selected mode (menuconfig -> Falcon).
-set(falcon_srcs "falcon_main.c")
+# Faithful Xbox Video Camera: descriptors, OV519 control, MJPEG packetizer, and
+# the custom TinyUSB application class driver.
+set(falcon_srcs
+    "falcon_main.c"
+    "usb_descriptors.c"
+    "ov519_control.c"
+    "ov519_stream.c"
+    "falcon_class.c")
 set(falcon_priv_requires "")
 
-if(CONFIG_FALCON_MODE_UVC)
-    list(APPEND falcon_srcs "uvc_descriptors.c" "uvc_device.c")
-    # esp_tinyusb does not expose the TinyUSB video class; enable it (and match our
-    # EP0 size) on the TinyUSB library target so usbd.c registers the video driver
-    # and video_device.c actually compiles. Values must match main/tusb_config.h.
-    set(falcon_tusb_defs
-        CFG_TUD_ENDPOINT0_SIZE=64
-        CFG_TUD_VIDEO=1
-        CFG_TUD_VIDEO_STREAMING=1
-        CFG_TUD_VIDEO_STREAMING_BULK=0
-        CFG_TUD_VIDEO_STREAMING_EP_BUFSIZE=512)
-else()
-    list(APPEND falcon_srcs
-        "usb_descriptors.c"
-        "ov519_control.c"
-        "ov519_stream.c"
-        "falcon_class.c")
-    # Optional WiFi UDP debug logging (Kconfig: FALCON_WIFI_LOG, default off).
-    # Only compiled when enabled, so the project builds with no wifi_creds.h present.
-    if(CONFIG_FALCON_WIFI_LOG)
-        list(APPEND falcon_srcs "wifi_log.c")
-        list(APPEND falcon_priv_requires esp_wifi nvs_flash esp_netif esp_event esp_hw_support)
-    endif()
-    # Byte-faithful EP0 size 8 for the OV519 camera (esp_tinyusb defaults to 64).
-    set(falcon_tusb_defs CFG_TUD_ENDPOINT0_SIZE=8)
+# Optional WiFi UDP debug logging (Kconfig: FALCON_WIFI_LOG, default off). Only
+# compiled when enabled, so the project builds with no wifi_creds.h present.
+if(CONFIG_FALCON_WIFI_LOG)
+    list(APPEND falcon_srcs "wifi_log.c")
+    list(APPEND falcon_priv_requires esp_wifi nvs_flash esp_netif esp_event esp_hw_support)
 endif()
+
+# Byte-faithful EP0 size 8 for the camera (esp_tinyusb defaults to 64).
+set(falcon_tusb_defs CFG_TUD_ENDPOINT0_SIZE=8)
 
 idf_component_register(
     SRCS ${falcon_srcs}

@@ -1,25 +1,7 @@
 menu "Falcon camera emulator"
 
-choice FALCON_MODE
-    prompt "Camera mode"
-    default FALCON_MODE_OV519
-    help
-        OV519 = faithful Xbox Video Camera (vendor OV519/OV530, MJPEG over iso) —
-        what the real Xbox Video Chat app expects, and Linux gspca_ov519.
-        UVC dev = a standard UVC MJPEG camera so a PC (Windows Camera app, OBS,
-        ffplay) previews the stream with no driver. Use it to bring up + verify the
-        ESP32 streaming pipeline on a PC before involving the Xbox.
-
-    config FALCON_MODE_OV519
-        bool "Faithful Xbox Video Camera (OV519/OV530)"
-
-    config FALCON_MODE_UVC
-        bool "UVC dev camera (PC preview, plug-and-play)"
-endchoice
-
 choice FALCON_USB_ID
-    prompt "OV519 USB identity"
-    depends on FALCON_MODE_OV519
+    prompt "USB identity"
     default FALCON_USB_ID_XBOX
     help
         Which device the OV519 mode presents. Xbox = what the Video Chat app
@@ -35,7 +17,6 @@ endchoice
 
 config FALCON_WIFI_LOG
     bool "WiFi UDP live-log broadcast (debug only; needs main/wifi_creds.h)"
-    depends on FALCON_MODE_OV519
     default n
     help
         Mirror every ESP_LOG line as a UDP broadcast on port 5555 so a PC on the
