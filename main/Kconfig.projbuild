@@ -33,4 +33,18 @@ choice FALCON_USB_ID
         bool "Sony EyeToy (054C:0155) - Linux gspca_ov519 testable"
 endchoice
 
+config FALCON_WIFI_LOG
+    bool "WiFi UDP live-log broadcast (debug only; needs main/wifi_creds.h)"
+    depends on FALCON_MODE_OV519
+    default n
+    help
+        Mirror every ESP_LOG line as a UDP broadcast on port 5555 so a PC on the
+        LAN can watch the camera while it is plugged into a distant Xbox. When
+        enabled, main/wifi_log.c is compiled and requires a local, gitignored
+        main/wifi_creds.h with your SSID/password (copy main/wifi_creds.h.example).
+
+        Keep this OFF for real Xbox tests: joining WiFi loads the CPU/radio enough
+        to break the Xbox's timing-strict USB enumeration. It is off by default so
+        the project builds with no secrets present.
+
 endmenu

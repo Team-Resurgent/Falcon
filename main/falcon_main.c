@@ -12,7 +12,7 @@
 #include "falcon_desc.h"
 #if defined(CONFIG_FALCON_MODE_UVC)
 #include "uvc_defs.h"
-#else
+#elif defined(CONFIG_FALCON_WIFI_LOG)
 #include "wifi_log.h"
 #endif
 
@@ -20,13 +20,12 @@ static const char *TAG = "falcon";
 
 void app_main(void) {
 #if !defined(CONFIG_FALCON_MODE_UVC)
-    // WiFi logging is OFF by default: on the Xbox's timing-strict USB stack the
-    // radio's CPU/interrupt/current load breaks enumeration (repeated bus resets,
-    // never configured). Enable only for PC-side debugging where it's harmless.
-    #ifndef FALCON_WIFI_LOG
-    #define FALCON_WIFI_LOG 0
-    #endif
-    #if FALCON_WIFI_LOG
+    // WiFi logging is OFF by default (Kconfig: FALCON_WIFI_LOG). On the Xbox's
+    // timing-strict USB stack the radio's CPU/interrupt/current load breaks
+    // enumeration (repeated bus resets, never configured), so enable it only for
+    // PC-side debugging where it's harmless -- and provide main/wifi_creds.h
+    // (copy main/wifi_creds.h.example). It is compiled in only when enabled.
+    #if defined(CONFIG_FALCON_WIFI_LOG)
     wifi_log_start();
     #endif
     ESP_LOGI(TAG, "boot: reset_reason=%d", (int)esp_reset_reason());

@@ -1,4 +1,9 @@
 // Falcon — WiFi UDP debug logging (see wifi_log.h).
+// Compiled only when CONFIG_FALCON_WIFI_LOG is set (Kconfig: FALCON_WIFI_LOG); the
+// build system excludes this file otherwise, so wifi_creds.h is only ever needed
+// with the feature explicitly enabled.
+#include "sdkconfig.h"
+#if defined(CONFIG_FALCON_WIFI_LOG)
 #include <string.h>
 #include <stdio.h>
 #include "wifi_log.h"
@@ -117,3 +122,5 @@ void wifi_log_start(void) {
     xTaskCreate(heartbeat_task, "falcon_hb", 3072, NULL, 3, NULL);
     ESP_LOGI(TAG, "wifi log starting, ssid=%s", FALCON_WIFI_SSID);
 }
+
+#endif // CONFIG_FALCON_WIFI_LOG

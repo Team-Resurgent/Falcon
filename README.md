@@ -58,6 +58,21 @@ To regenerate the frames (e.g. different pattern/size):
 python tools/gen_checkerboard_jpegs.py --out main/checkerboard_jpegs.h
 ```
 
+The project builds with **no extra setup** — the two things below are handled for
+you or are off by default:
+
+- **dwc2 EP0-SETUP-DMA crash fix (automatic).** `esp_tinyusb` is a managed
+  component (re-downloaded pristine), so a required one-line ESP32-S3 fix in its
+  `dcd_dwc2.c` is re-applied by `patches/apply_tinyusb_patch.py`, which the build
+  runs for you every configure (idempotent). Without it, DMA-mode streaming
+  crashes ~2–3 s in on the Xbox. Details in [`patches/README.md`](patches/README.md).
+- **WiFi debug logging (off by default).** No `wifi_creds.h` is needed to build.
+  To mirror logs over UDP while the board is on a distant Xbox, enable
+  *Falcon camera emulator → WiFi UDP live-log broadcast* in `menuconfig`, then
+  `cp main/wifi_creds.h.example main/wifi_creds.h` and fill in your SSID/password
+  (`wifi_creds.h` is gitignored). Keep it **off** for real Xbox tests — joining
+  WiFi breaks the Xbox's timing-strict USB enumeration.
+
 ## Verify (PC, no Xbox)
 
 **Easiest — UVC dev mode on any PC (incl. Windows):** set *Camera mode* →

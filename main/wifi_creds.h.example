@@ -1,0 +1,18 @@
+// Falcon — WiFi credentials for the optional UDP debug logger.
+//
+// This is only needed when CONFIG_FALCON_WIFI_LOG is enabled (menuconfig ->
+// "Falcon camera emulator" -> "WiFi UDP live-log broadcast"). The default build
+// leaves it OFF, so you do NOT need this file to build or run the camera.
+//
+// To use the WiFi logger:
+//   1. cp main/wifi_creds.h.example main/wifi_creds.h
+//   2. fill in your SSID / password below
+//   3. enable FALCON_WIFI_LOG in menuconfig
+//
+// main/wifi_creds.h is gitignored on purpose — never commit real credentials.
+// Keep WiFi logging OFF for real Xbox tests: joining WiFi loads the CPU/radio
+// enough to break the Xbox's timing-strict USB enumeration.
+#pragma once
+
+#define FALCON_WIFI_SSID  "your-ssid"
+#define FALCON_WIFI_PASS  "your-password"
