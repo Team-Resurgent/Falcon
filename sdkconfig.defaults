@@ -16,3 +16,8 @@ CONFIG_ESPTOOLPY_FLASHSIZE_4MB=y
 # (usbd_app_driver_get_cb). EP0 size is pinned to 8 in tusb_config.h to match the
 # real camera's device descriptor.
 CONFIG_TINYUSB_DEBUG_LEVEL=1
+
+# Force TinyUSB dwc2 SLAVE mode: the ESP32-S3 OTG DMA engine corrupts the EP0
+# SETUP doepdma pointer under heavy iso IN load and crashes (Cache/MMU fault in
+# handle_epout_dma). Slave/FIFO mode copies via CPU and is stable.
+CONFIG_TINYUSB_MODE_SLAVE=y

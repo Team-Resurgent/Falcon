@@ -14,7 +14,24 @@ void ov519_ctrl_reset(void);
 // Reset the frame/packet cursor to the start of a fresh frame.
 void ov519_stream_reset(void);
 
-// Produce the next iso packet (OV519-framed MJPEG) into `buf` (capacity =
-// current alt's wMaxPacketSize). Writes the packet length to *out_len
-// (0 <= *out_len <= maxpkt). Never blocks.
-void ov519_stream_next_packet(uint8_t *buf, uint16_t maxpkt, uint16_t *out_len);
+// Rewind to the start (SOF) of the CURRENT frame. Used when a packet is lost:
+// a frame whose SOF never reached the host is discarded whole by every consumer
+// (gspca, PSCam4Windows and the Xbox KS framer all drop data until they see
+// FF FF FF 50), so on any packet loss we restart the frame rather than emit a
+// headerless fragment.
+void ov519_stream_restart_frame(void);
+
+// True while the next packet to send is the frame's SOF (must never be skipped).
+bool ov519_stream_at_sof(void);
+
+// Fill ONE iso packet (<= maxpkt bytes) of the continuous OV519 stream into `buf`
+// and return its length. Successive calls walk a state machine per frame:
+//   * SOF packet:  FF FF FF 50 + 16B header, then up to (maxpkt-16) JPEG bytes.
+//   * body packets: maxpkt JPEG bytes each; the final one is SHORT (real length),
+//     so the consumer's per-packet BytesRead ends exactly at the JPEG EOI.
+//   * EOF packet:  FF FF FF 51 + 16B header (16 bytes) -> publish, advance frame.
+// Feeding ONE packet per iso transfer (submit the next in the completion callback)
+// matches the real camera's continuous stream and never overruns the full-speed
+// bus: unlike a multi-packet whole-frame transfer, each single-packet transfer
+// completes cleanly (the whole-frame transfers errored on every body).
+uint32_t ov519_stream_next_packet(uint8_t *buf, uint16_t maxpkt);

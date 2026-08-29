@@ -10,3 +10,6 @@ __pycache__/
 
 # Editor / IDE
 .vscode/
+
+# local secrets
+main/wifi_creds.h

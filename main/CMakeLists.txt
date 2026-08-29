@@ -17,7 +17,8 @@ else()
         "usb_descriptors.c"
         "ov519_control.c"
         "ov519_stream.c"
-        "falcon_class.c")
+        "falcon_class.c"
+        "wifi_log.c")
     # Byte-faithful EP0 size 8 for the OV519 camera (esp_tinyusb defaults to 64).
     set(falcon_tusb_defs CFG_TUD_ENDPOINT0_SIZE=8)
 endif()
@@ -25,6 +26,7 @@ endif()
 idf_component_register(
     SRCS ${falcon_srcs}
     INCLUDE_DIRS "."
+    PRIV_REQUIRES esp_wifi nvs_flash esp_netif esp_event esp_hw_support
 )
 
 # Inject the settings the TinyUSB library must share with our sources directly onto

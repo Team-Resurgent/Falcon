@@ -31,15 +31,34 @@ static const uint8_t s_device_desc[18] = {
     1                    // bNumConfigurations
 };
 
-// ---- Configuration descriptor (89 bytes, 0x59) ---------------------------
-// One interface, 5 alt-settings, each with the iso IN EP 0x81 (alt0 maxpkt 0).
+// ---- Configuration descriptor --------------------------------------------
+// One interface, 5 alt-settings; alts 1-4 carry the iso IN EP 0x81.
+//
+// FALCON_ALT0_NO_EP: the byte-faithful camera puts a maxpkt-0 iso EP on alt0,
+// which Windows' USB config parser rejects (device stuck at Code 10, so QEMU/
+// libusb can't open it for xemu passthrough). Stripping alt0's endpoint lets
+// Windows/libusbK start the device; the Xbox path is unaffected (it streams on
+// alt3, and alt0 is only the "stop" setting). Enable for PC/xemu testing.
+#ifndef FALCON_ALT0_NO_EP
+#define FALCON_ALT0_NO_EP 0   // 1 = strip alt0 EP for PC/xemu experiments (didn't clear Windows Code 10)
+#endif
+
 #define EP_ALT(mps) 0x07, 0x05, FALCON_EP_STREAM_IN, 0x01, \
                     (uint8_t)((mps) & 0xFF), (uint8_t)((mps) >> 8), 0x01
 #define IFACE_ALT(alt) 0x09, 0x04, 0x00, (alt), 0x01, 0xFF, 0x00, 0x00, 0x00
-static const uint8_t s_config_desc[89] = {
-    // config: wTotalLength 89, 1 interface, bus-powered, 500 mA
-    0x09, TUSB_DESC_CONFIGURATION, 0x59, 0x00, 0x01, 0x01, 0x00, 0x80, 0xFA,
-    IFACE_ALT(0), EP_ALT(0),
+
+#if FALCON_ALT0_NO_EP
+#  define ALT0_BODY 0x09, 0x04, 0x00, 0x00, 0x00, 0xFF, 0x00, 0x00, 0x00  // 0 EPs
+#  define CFG_WTOTAL 0x52  // 82
+#else
+#  define ALT0_BODY IFACE_ALT(0), EP_ALT(0)
+#  define CFG_WTOTAL 0x59  // 89
+#endif
+
+static const uint8_t s_config_desc[] = {
+    // config: wTotalLength, 1 interface, bus-powered, 500 mA
+    0x09, TUSB_DESC_CONFIGURATION, CFG_WTOTAL, 0x00, 0x01, 0x01, 0x00, 0x80, 0xFA,
+    ALT0_BODY,
     IFACE_ALT(1), EP_ALT(384),
     IFACE_ALT(2), EP_ALT(512),
     IFACE_ALT(3), EP_ALT(768),

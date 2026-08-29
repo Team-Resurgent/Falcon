@@ -4,6 +4,7 @@
 //
 // The native USB-OTG port is the camera; console/flash is on UART0 (COM3).
 #include "esp_log.h"
+#include "esp_system.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "tinyusb.h"
@@ -11,15 +12,27 @@
 #include "falcon_desc.h"
 #if defined(CONFIG_FALCON_MODE_UVC)
 #include "uvc_defs.h"
+#else
+#include "wifi_log.h"
 #endif
 
 static const char *TAG = "falcon";
 
 void app_main(void) {
-#if defined(CONFIG_FALCON_MODE_UVC)
-    ESP_LOGI(TAG, "Falcon: UVC dev camera starting");
-#else
+#if !defined(CONFIG_FALCON_MODE_UVC)
+    // WiFi logging is OFF by default: on the Xbox's timing-strict USB stack the
+    // radio's CPU/interrupt/current load breaks enumeration (repeated bus resets,
+    // never configured). Enable only for PC-side debugging where it's harmless.
+    #ifndef FALCON_WIFI_LOG
+    #define FALCON_WIFI_LOG 0
+    #endif
+    #if FALCON_WIFI_LOG
+    wifi_log_start();
+    #endif
+    ESP_LOGI(TAG, "boot: reset_reason=%d", (int)esp_reset_reason());
     ESP_LOGI(TAG, "Falcon: Xbox Video Camera (OV519/OV530) emulator starting");
+#else
+    ESP_LOGI(TAG, "Falcon: UVC dev camera starting");
 #endif
 
     // esp_tinyusb builds its tud_descriptor_*_cb from the pointers we pass here
@@ -44,7 +57,27 @@ void app_main(void) {
     ESP_LOGI(TAG, "USB device installed — streaming starts on SET_INTERFACE(alt>=1)");
 #endif
 
-    for (;;) {
-        vTaskDelay(pdMS_TO_TICKS(5000));
+#if !defined(CONFIG_FALCON_MODE_UVC)
+    // Periodic UART status so a serial monitor sees the whole negotiation even if
+    // single event lines are missed — and so a reboot is obvious (t resets).
+    extern volatile uint32_t g_falcon_reset, g_falcon_open, g_falcon_setintf,
+                             g_falcon_pkts, g_falcon_bytes, g_falcon_xfer_ok,
+                             g_falcon_xfer_err, g_falcon_submit_fail,
+                             g_falcon_body_err, g_falcon_eof_err;
+    extern volatile uint32_t g_ov_ctrl_rd, g_ov_ctrl_wr, g_ov_ctrl_other;
+    for (uint32_t t = 0;; t++) {
+        vTaskDelay(pdMS_TO_TICKS(2000));
+        ESP_LOGI(TAG, "HB t=%us mnt=%d rst=%lu open=%lu setintf=%lu ctrlR=%lu "
+                      "ctrlW=%lu ctrlO=%lu pkts=%lu bytes=%lu ok=%lu err=%lu(b%lu/e%lu) sfail=%lu",
+                 t * 2, tud_mounted() ? 1 : 0, (unsigned long)g_falcon_reset,
+                 (unsigned long)g_falcon_open, (unsigned long)g_falcon_setintf,
+                 (unsigned long)g_ov_ctrl_rd, (unsigned long)g_ov_ctrl_wr,
+                 (unsigned long)g_ov_ctrl_other, (unsigned long)g_falcon_pkts,
+                 (unsigned long)g_falcon_bytes, (unsigned long)g_falcon_xfer_ok,
+                 (unsigned long)g_falcon_xfer_err, (unsigned long)g_falcon_body_err,
+                 (unsigned long)g_falcon_eof_err, (unsigned long)g_falcon_submit_fail);
     }
+#else
+    for (;;) vTaskDelay(pdMS_TO_TICKS(5000));
+#endif
 }

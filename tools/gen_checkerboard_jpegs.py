@@ -24,20 +24,25 @@ from PIL import Image
 W, H = 320, 240
 
 
+# SMPTE-style vertical color bars: JPEG-friendly (smooth, low high-frequency
+# content, no ringing) and the colours make any decode/chroma error obvious.
+BARS = [(255, 255, 255), (255, 255, 0), (0, 255, 255), (0, 255, 0),
+        (255, 0, 255), (255, 0, 0), (0, 0, 255), (0, 0, 0)]
+
+
 def make_frame(phase, frames, square):
-    """A checkerboard shifted by `phase/frames` of one square, so the pattern
-    scrolls smoothly and loops seamlessly over the whole set."""
-    shift = int(round(phase * (2 * square) / frames))  # 2*square = one full period
+    """Vertical colour bars with a moving white marker bar, so the image is
+    clean (JPEG-friendly) yet still animated to prove a live stream."""
     img = Image.new("RGB", (W, H))
     px = img.load()
+    bar_w = W // len(BARS)
+    marker_x = int(phase * (W - 8) / max(1, frames))  # sweeps left->right
     for y in range(H):
         for x in range(W):
-            cx = ((x + shift) // square) & 1
-            cy = (y // square) & 1
-            on = cx ^ cy
-            # Distinct, saturated-ish colors so it's obvious on screen and the
-            # luma spread is wide (helps prove a real decode).
-            px[x, y] = (230, 210, 40) if on else (30, 60, 200)
+            if marker_x <= x < marker_x + 8:
+                px[x, y] = (255, 255, 255)          # moving white marker
+            else:
+                px[x, y] = BARS[min(x // bar_w, len(BARS) - 1)]
     return img
 
 
@@ -48,14 +53,17 @@ def main():
     ap.add_argument("--square", type=int, default=40)
     ap.add_argument("--quality", type=int, default=75)
     ap.add_argument("--dump-dir", default=None, help="also write .jpg files here")
+    ap.add_argument("--solid", default=None,
+                    help="R,G,B -> emit solid-colour frames (decode-vs-delivery test)")
     args = ap.parse_args()
+    solid = tuple(int(x) for x in args.solid.split(",")) if args.solid else None
 
     if args.dump_dir:
         os.makedirs(args.dump_dir, exist_ok=True)
 
     blobs = []
     for p in range(args.frames):
-        img = make_frame(p, args.frames, args.square)
+        img = Image.new("RGB", (W, H), solid) if solid else make_frame(p, args.frames, args.square)
         import io
         buf = io.BytesIO()
         # baseline (progressive=False), 4:2:2 subsampling to match the OV519's
