@@ -19,7 +19,7 @@ Usage:
 """
 import argparse
 import os
-from PIL import Image
+from PIL import Image, ImageDraw
 
 W, H = 320, 240
 
@@ -46,6 +46,32 @@ def make_frame(phase, frames, square):
     return img
 
 
+def _ping(t):
+    """triangle wave 0->1->0 for constant-speed ping-pong; t in [0,1)."""
+    t = (t * 2.0) % 2.0
+    return t if t <= 1.0 else 2.0 - t
+
+
+def animate_frame(base, p, frames):
+    """base test-card with a Knight-Rider red scanner sweeping L<->R in the bottom
+       centre (live motion)."""
+    img = base.copy()
+    d = ImageDraw.Draw(img)
+    bar_w = 130                 # scanner span (compact -> small per-frame step = smooth)
+    x0 = (W - bar_w) // 2       # centred horizontally
+    y0 = H - 30                 # bottom
+    bh = 16                     # bar height
+    glow = 30.0                 # glow half-width (px) -> the trailing fade
+    cx = x0 + int(_ping(p / float(frames)) * bar_w)   # light centre, ping-pong
+    for x in range(x0, x0 + bar_w):
+        dist = abs(x - cx)
+        inten = int(255 * (1.0 - dist / glow)) if dist < glow else 18   # dim-red idle bar
+        if inten < 18:
+            inten = 18
+        d.line([(x, y0), (x, y0 + bh)], fill=(inten, 0, 0))
+    return img
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--out", required=True, help="output C header path")
@@ -55,15 +81,33 @@ def main():
     ap.add_argument("--dump-dir", default=None, help="also write .jpg files here")
     ap.add_argument("--solid", default=None,
                     help="R,G,B -> emit solid-colour frames (decode-vs-delivery test)")
+    ap.add_argument("--image", default=None,
+                    help="use this image file (resized to 320x240) as the frame(s)")
+    ap.add_argument("--animate", action="store_true",
+                    help="with --image, overlay a bouncing marker across --frames frames (live motion)")
     args = ap.parse_args()
     solid = tuple(int(x) for x in args.solid.split(",")) if args.solid else None
+
+    img_src = None
+    if args.image:
+        img_src = Image.open(args.image).convert("RGB").resize((W, H), Image.LANCZOS)
+        if args.animate:
+            if args.frames < 2:
+                args.frames = 24          # need multiple frames for motion
+        else:
+            args.frames = 1               # a static preview needs just one frame
 
     if args.dump_dir:
         os.makedirs(args.dump_dir, exist_ok=True)
 
     blobs = []
     for p in range(args.frames):
-        img = Image.new("RGB", (W, H), solid) if solid else make_frame(p, args.frames, args.square)
+        if img_src is not None:
+            img = animate_frame(img_src, p, args.frames) if args.animate else img_src
+        elif solid:
+            img = Image.new("RGB", (W, H), solid)
+        else:
+            img = make_frame(p, args.frames, args.square)
         import io
         buf = io.BytesIO()
         # baseline (progressive=False), 4:2:2 subsampling to match the OV519's
