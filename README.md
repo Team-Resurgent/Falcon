@@ -1,4 +1,21 @@
-# Falcon — Xbox Video Camera emulator (ESP32-S3)
+<h1 align="center">Falcon</h1>
+
+<p align="center"><b>The original Xbox Video Camera (OmniVision OV519 / OV530), emulated on an ESP32-S3</b></p>
+
+<p align="center">
+  <a href="https://github.com/Team-Resurgent/Falcon/blob/master/LICENSE.md"><img src="https://img.shields.io/badge/License-GPLv3-blue.svg" alt="License: GPL v3"></a>
+  <a href="https://github.com/Team-Resurgent/Falcon/actions/workflows/release.yml"><img src="https://github.com/Team-Resurgent/Falcon/actions/workflows/release.yml/badge.svg" alt="Release"></a>
+  <a href="https://discord.gg/VcdSfajQGK"><img src="https://img.shields.io/badge/chat-on%20discord-7289da.svg?logo=discord" alt="Discord"></a>
+</p>
+
+<p align="center">
+  <a href="https://ko-fi.com/J3J7L5UMN"><img src="https://ko-fi.com/img/githubbutton_sm.svg" alt="ko-fi"></a>
+  <a href="https://www.patreon.com/teamresurgent"><img src="https://img.shields.io/badge/Patreon-F96854?style=for-the-badge&logo=patreon&logoColor=white" alt="Patreon"></a>
+</p>
+
+<p align="center">
+  <a href="https://github.com/Team-Resurgent/Falcon/releases/latest"><img src="https://img.shields.io/badge/download-latest-brightgreen.svg?style=for-the-badge&logo=github" alt="Download"></a>
+</p>
 
 Falcon makes an ESP32-S3 present itself as the **original Xbox Video Camera**
 (OmniVision **OV530 / OV519**, the same bridge as the Sony EyeToy) so an
