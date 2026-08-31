@@ -22,6 +22,10 @@ Falcon makes an ESP32-S3 present itself as the **original Xbox Video Camera**
 **unmodified** host — the Xbox Video Chat app, or Linux `gspca_ov519` on a PC —
 sees a real camera. No app patching.
 
+> 🚧 **Work in progress.** The Xbox Video Chat app **accepts and enumerates the
+> device** as a real camera, but **video does not display yet** — getting the
+> MJPEG stream to actually render on the Xbox is the current focus.
+
 **Milestone 1 (this repo):** stream a scrolling-checkerboard **MJPEG** at 320×240
 so you can *see* video end to end. Audio (the separate Xbox Communicator, a.k.a.
 "Hawk") and the Xbox-side capture sample are future work.
